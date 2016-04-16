@@ -1,19 +1,64 @@
 pico-8 cartridge // http://www.pico-8.com
 version 5
 __lua__
-actor={}
-debug=true
 
 --start gameplay
 
+function setup_actors()
+	plr = create_actor(39*8,50*8,1,1)
+	plr.speed=1
+	plr.maxspeed=2
+	add(plr.type,"player")
+	add(plr.type,"health")
+
+	local camera = create_actor(32*8,48*8,0,0)
+	add(camera.type,"camera")
+	camera.speed=1
+	camera.maxspeed=2
+
+	local enemy = create_actor(39*8,34*8,2,2)
+	enemy.sp=32
+	enemy.maxspeed=.5
+	add(enemy.type,"talkable")
+	add(enemy.type,"health")
+	enemy.diag={"you found me!!!!", "prepare to die!!!!!"}
+end
+
 --start dialogue system
-indialogue=true
+indialogue=false
+diagtree={}
+currdiag=""
+dispdiag=""
+cdi=1
+di=1
+
+function start_dialogue(dialogues)
+	diagtree=dialogues
+	cdi=0
+	call_dialogue()
+end
 
 function call_dialogue()
-	
+	currdiag=diagtree[cdi]
+	indialogue=true
+	dispdiag=""
+	di=1
+	caninput=false
+end
+
+function next_dialogue()
+	cdi+=1
+	if(cdi > count(diagtree)) indialogue=false caninput=true return
+	call_dialogue()
 end
 
 function draw_dialogue_box()
+	if(dispdiag!=currdiag) then
+		local c = getsubstring(currdiag,di)
+		dispdiag=c
+		di+=1
+		sfx(01)
+	end
 	--draw corners
 	spr(14,actor[2].x, actor[2].y+92, 1,1)
 	spr(14,actor[2].x+120, actor[2].y+92, 1,1,true)
@@ -37,9 +82,29 @@ function draw_dialogue_box()
 			spr(31,actor[2].x+((x+1)*8), actor[2].y+(92 + (((y+1)*8))), 1,1,false,true)
 		end
 	end
+	print(dispdiag,actor[2].x+8, actor[2].y+96)
+end
+
+function manage_talker(a)
+	if not caninput then return end
+	if(distance(a.x, a.y,actor[1].x, actor[1].y) < 16 and btnp(4)) then
+		start_dialogue(a.diag)
+	end
+end
+
+function in_dialogue()
+	if(btnp(4))	next_dialogue()
+end
+
+function getsubstring(str,i)
+	return sub(str,1,i)
 end
 
 -- start engine
+actor={}
+debug=false
+caninput=true
+
 function create_actor(x,y,sizex,sizey)
 	a={}
 	a.x=x
@@ -74,6 +139,7 @@ function manage_actor(a)
 		if t=="health" then health_manager(a) end
 		if t=="actor" then adjust_velocity(a) end
 		if t=="camera" then manage_camera(a) end
+		if t=="talkable" then manage_talker(a) end
 	end
 end
 
@@ -139,6 +205,7 @@ end
 function control_player()
 	actor[1].dx = 0
 	actor[1].dy = 0
+	if not caninput then return end
 	if (btn(0)) actor[1].dx=-1
 	if (btn(1)) actor[1].dx=1
 	if (btn(2)) actor[1].dy=-1
@@ -147,6 +214,7 @@ end
 
 function _update()
 	foreach(actor,manage_actor)
+	if(indialogue) in_dialogue()
 end
 
 function _draw()
@@ -159,23 +227,7 @@ function _draw()
 end
 
 function _init()
-
-	plr = create_actor(39*8,50*8,1,1)
-	plr.speed=1
-	plr.maxspeed=2
-	add(plr.type,"player")
-	add(plr.type,"health")
-
-	local camera = create_actor(32*8,48*8,0,0)
-	add(camera.type,"camera")
-	camera.speed=1
-	camera.maxspeed=2
-
-	local enemy = create_actor(50,50,2,2)
-	enemy.sp=32
-	enemy.maxspeed=.5
-	add(enemy.type,"enemy")
-	add(enemy.type,"health")
+	setup_actors()
 end
 
 function debug_function()
@@ -253,17 +305,11 @@ function solid_actor(a, dx, dy)
 				-- without sticking together    
 				if (dx != 0 and abs(x) <
 					abs(a.x-a2.x)) then
-					v=a.velx + a2.velx
-					--a.dx = v/2
-					a2.dx = v/2
 					return true,a2 
 				end
 
 				if (dy != 0 and abs(y) <
 					abs(a.y-a2.y)) then
-					v=a.vely + a2.vely
-					--a.dy=v/2
-					a2.dy=v/2
 					return true,a2 
 				end
 
@@ -282,6 +328,12 @@ function solid_a(a, dx, dy)
 	a.spw*4,a.sph*4) then
 	return true end
  return solid_actor(a, dx, dy)
+end
+
+function distance(sx, sy, x, y)
+	xd = x-sx
+	yd = y-sy
+	return sqrt(xd*xd + yd*yd)
 end
 
 __gfx__
@@ -450,8 +502,8 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
-000100003a07039070360703407032070300702e0702c0702b0702a07028070260702507023070230702207021000210002000002000020000200001000010000400004000030000300003000020000200001000
-001000000c0700c0700c0700c0700c0700c0700e07010070100700c0700e0700e0700e07010070110700c0700e070100700c0700e070100700c0700e0701f000100702300010070100700e0700e070100700c070
+000100003a00039070360703407032070300702e0702c0702b0702a07028070260702507023070230702207021000210002000002000020000200001000010000400004000030000300003000020000200001000
+000100003047033470074000540005400074000540008400074000a4000a4000a4000a4000640008400094000a400094000940009400094000a4000a4000b4000b4000b4000b4000a4000a4000f4000a40007400
 001000001807018070180701807018070180701a0701c0701c070180701a0701a0701a0701c0701d07021070240701a0701a0701a0701c0702407018070230701c07023070000002307000000240702407000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
