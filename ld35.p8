@@ -31,6 +31,7 @@ battle_starting=false
 battlesprites={}
 
 function start_battle(a)
+
 	inbattle=true
 	battle_starting=true
 
@@ -38,15 +39,23 @@ function start_battle(a)
 	add(battlesprites,actor[1])
 	add(battlesprites,a)
 
-	battlesprites[1].bsx=-32
-	battlesprites[1].bsy=92
+	battlesprites[1].bsx=132
+	battlesprites[1].bsy=48
 
-	battlesprites[2].bsx=132
-	battlesprites[2].bsy=24
+	battlesprites[2].bsx=-32
+	battlesprites[2].bsy=8
+
+	start_dialogue({"a wild dad appears!"})
+
 end
 
 function start_anims(a1,a2)
-	a1.bsx=movetowards(a1.bsx, 32, 1)
+	local dest1=12
+	local dest2=84
+	a1.bsx=movetowards(a1.bsx, dest1, 1.5)
+	a2.bsx=movetowards(a2.bsx, dest2, 1.5)
+
+	if(a1.bsx==dest1 and a2.bsx==dest2) battle_starting=false
 end
 
 function battle_mode()
@@ -57,8 +66,14 @@ end
 
 function draw_battle()
 	camera(0,0)
-	rectfill(0,0,128,128, 7)
-	foreach(battlesprites, function(a) spr(a.sp, a.bsx, a.bsy, 1, 2, 0,0) end)
+	if(battle_starting) then
+		rectfill(0,0,128,128, 6)
+	else
+		rectfill(0,0,128,128, 7)
+	end
+	zspr(battlesprites[1].sp,battlesprites[1].spw,battlesprites[1].sph,battlesprites[1].bsx,battlesprites[1].bsy,4,true)
+	zspr(battlesprites[2].sp,battlesprites[2].spw,battlesprites[2].sph,battlesprites[2].bsx,battlesprites[2].bsy,3,false)
+	if(indialogue) draw_dialogue_box(0,88,15,2)
 end
 
 --start dialogue system
@@ -100,38 +115,42 @@ function next_dialogue()
 	call_dialogue()
 end
 
-function draw_dialogue_box()
+function draw_box_bg(px,py,w,h)
+	--draw corners
+	spr(14,px, py, 1,1)
+	spr(14,px+(8*w), py, 1,1,true)
+	spr(14,px, py+(8*(h+2)), 1,1,false,true)
+	spr(14,px+(8*w), py+(8*(h+2)), 1,1,true,true)
+	--draw horizontal
+	for i=0,w-2,1 do 
+		spr(15,px+((i+1)*8), py, 1,1)
+	end
+	for i=0,w-2,1 do 
+		spr(15,px+((i+1)*8), py+(8*(h+2)), 1,1,false,true)
+	end
+	for i=0,h,1 do 
+		spr(30,px, py+(((i+1)*8)), 1,1,false,true)
+	end
+	for i=0,h,1 do 
+		spr(30,px+(8*w), py+(((i+1)*8)), 1,1,true,true)
+	end
+	for x=0,w-2,1 do
+		for y=0,h,1 do
+			spr(31,px+((x+1)*8), py+(((y+1)*8)), 1,1,false,true)
+		end
+	end
+end
+
+function draw_dialogue_box(px,py,w,h)
 	if(dispdiag!=currdiag) then
 		local c = getsubstring(currdiag,di)
 		dispdiag=c
 		di+=1
 		sfx(01)
 	end
-	--draw corners
-	spr(14,actor[2].x, actor[2].y+92, 1,1)
-	spr(14,actor[2].x+120, actor[2].y+92, 1,1,true)
-	spr(14,actor[2].x, actor[2].y+120, 1,1,false,true)
-	spr(14,actor[2].x+120, actor[2].y+120, 1,1,true,true)
-	--draw horizontal
-	for i=0,13,1 do 
-		spr(15,actor[2].x+((i+1)*8), actor[2].y+92, 1,1)
-	end
-	for i=0,13,1 do 
-		spr(15,actor[2].x+((i+1)*8), actor[2].y+120, 1,1,false,true)
-	end
-	for i=0,2,1 do 
-		spr(30,actor[2].x, actor[2].y+(92 + (((i+1)*8))), 1,1,false,true)
-	end
-	for i=0,2,1 do 
-		spr(30,actor[2].x+120, actor[2].y+(92 + (((i+1)*8))), 1,1,true,true)
-	end
-	for x=0,13,1 do
-		for y=0,2,1 do
-			spr(31,actor[2].x+((x+1)*8), actor[2].y+(92 + (((y+1)*8))), 1,1,false,true)
-		end
-	end
-	if(dispdiag==currdiag)	spr(47,actor[2].x+116, actor[2].y+116)
-	print(dispdiag,actor[2].x+8, actor[2].y+96,7)
+	draw_box_bg(px,py,w,h)
+	if(dispdiag==currdiag)	spr(47,px+116, py+116)
+	print(dispdiag,px+8, py+8,7)
 end
 
 function manage_talker(a)
@@ -284,11 +303,11 @@ function _draw()
 		map(0,0,0,0,128,128)
 		foreach(actor,draw_actor)
 		camera(actor[2].x,actor[2].y)
+		if(indialogue) draw_dialogue_box(actor[2].x,actor[2].y+88,15,2)
 	else
 		draw_battle()
 	end
 	if(debug)debug_function()
-	if(indialogue) draw_dialogue_box()
 end
 
 function _init()
@@ -329,6 +348,18 @@ function compare_ignore(a,a2)
 	return false
 end
 
+function zspr(n,w,h,dx,dy,dz,flipx,flipy)
+
+	sx = 8 * (n % 16)
+	sy = 8 * flr(n / 16)
+	sw = 8 * w
+	sh = 8 * h
+	dw = sw * dz
+	dh = sh * dz
+
+	sspr(sx,sy,sw,sh, dx,dy,dw,dh,flipx,flipy)
+
+end
 
 --collision code
 
