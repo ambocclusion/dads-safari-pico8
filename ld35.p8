@@ -4,6 +4,8 @@ __lua__
 
 --start gameplay
 
+currdad=0.0
+
 function setup_actors()
 	plr = create_actor(39*8,16*8,1,2)
 	plr.speed=1
@@ -22,12 +24,18 @@ function setup_actors()
 	add(enemy.type,"talkable")
 	add(enemy.type,"dad")
 	add(enemy.type,"health")
+	enemy.capturechance=.1
+	enemy.maxcapchance=.65
+	enemy.throwmod=.2
+	enemy.angerlevel=0
+	enemy.runchance=.1
+	enemy.evasion=.15
 	enemy.diag={"i'm here to capture you!", "hi here to capture you,\ni'm dad"}
 end
 
 --"battle" system
 inbattle=false
-battle_starting=false
+battle_starting=false	--TODO: change this to a statemachine
 battlesprites={}
 battle_selection=1
 battle_desc={
@@ -37,12 +45,6 @@ battle_desc={
 	"run away\nfrom dad"
 }
 player_turn=false
-attack_types={
-	throw_rock,
-	throw_food,
-	attempt_capture,
-	run_away
-}
 
 function start_battle(a)
 
@@ -69,23 +71,43 @@ function start_anims(a1,a2)
 	a1.bsx=movetowards(a1.bsx, dest1, 1.5)
 	a2.bsx=movetowards(a2.bsx, dest2, 1.5)
 
-	if(a1.bsx==dest1 and a2.bsx==dest2) then battle_starting=false indialogue=false start_dialogue(battle_desc) end
+	if(a1.bsx==dest1 and a2.bsx==dest2) then battle_starting=false indialogue=false player_turn=true start_dialogue(battle_desc) end
 end
 
-function perform_attack()
-	attack_types[battle_selection]()
+function perform_attack(attack)
+	if(attack == 1)	throw_rock()
+	if(attack == 2)	throw_food()
+	if(attack == 3)	attempt_capture()
+	if(attack == 4)	run_away()
+	player_turn=false
 end
 
 function throw_rock()
+	local random=rnd(1)
+	if(random<=battlesprites[2].evasion) then
+		battlesprites[2].capturechance+=battlesprites[2].throwmod
+		battlesprites[2].angerlevel+=.2
+		start_dialogue("rock thrown successfully!") -- todo get this shit workin'
+	end
 end
 
 function throw_food()
+	battlesprites[2].capturechance+=battlesprites[2].throwmod
+	battlesprites[2].angerlevel-=.2
 end
 
 function attempt_capture()
+	local random=rnd(1)
+	if(random<=battlesprites[2].capturechance) then
+		capture_dad()
+	end
 end
 
 function run_away()
+end
+
+function capture_dad()
+	currdad=battlesprites[2].angerlevel
 end
 
 function battle_mode()
@@ -94,9 +116,11 @@ function battle_mode()
 		start_anims(battlesprites[1],battlesprites[2])
 		return
 	end
-	if(btnp(4))	then perform_attack() end
-	if(btnp(2) and battle_selection > 1) then sfx(2) battle_selection-= 1 cdi=battle_selection call_dialogue() end
-	if(btnp(3) and battle_selection < count(battle_desc)) then sfx(2) battle_selection+= 1 cdi=battle_selection call_dialogue() end
+	if(player_turn) then
+		if(btnp(4))	then sfx(3) perform_attack(battle_selection) end
+		if(btnp(2) and battle_selection > 1) then sfx(2) battle_selection-= 1 cdi=battle_selection call_dialogue() end
+		if(btnp(3) and battle_selection < count(battle_desc)) then sfx(2) battle_selection+= 1 cdi=battle_selection call_dialogue() end
+	end
 end
 
 function draw_battle_screen()
@@ -120,7 +144,7 @@ function draw_battle()
 	zspr(battlesprites[1].sp,battlesprites[1].spw,battlesprites[1].sph,battlesprites[1].bsx,battlesprites[1].bsy,4,true)
 	zspr(battlesprites[2].sp,battlesprites[2].spw,battlesprites[2].sph,battlesprites[2].bsx,battlesprites[2].bsy,3,false)
 	if(indialogue) draw_dialogue_box(0,88,15,2)
-	if(battle_starting==false)then
+	if(battle_starting==false and player_turn)then
 		draw_battle_screen()
 	end
 end
@@ -650,7 +674,7 @@ __sfx__
 000100003a00039070360703407032070300702e0702c0702b0702a07028070260702507023070230702207021000210002000002000020000200001000010000400004000030000300003000020000200001000
 010300001f41028100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010018100
 0104000036020370300d0000e0000f00010000110001200013000140001500016000170001c0001c0001e0000f0000f0000f000140001c0001c000230001f000330001f000360000c0002e000140001000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011000002377011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
