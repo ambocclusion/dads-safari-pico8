@@ -75,9 +75,29 @@ function restart_game()
 end
 
 waiting={}
+walkingout={}
+leaving=false
 accepted=false
 function start_new_cycle()
 	create_customer()
+end
+
+function turn_in()
+	local right_responses={
+		"this is exactly what i wanted!",
+		"just the right dad",
+		"wow! great dad!"
+	}
+	local wrong_responses={
+		"not exactly what i wanted",
+		"i'm never coming back!"
+	}
+	--if(waiting!={}) then
+	if(waiting.wants == get_current_anger(currdad)) then start_dialogue({pick_random_response(right_responses)},nil,function() walkingout=waiting currdad=-2.0 waiting={} create_customer() leaving=true end)
+	else	start_dialogue({pick_random_response(wrong_responses)},nil,function() walkingout=waiting currdad=-2.0 waiting={} create_customer() leaving=true end)
+		--end
+		
+	end
 end
 
 function create_customer()
@@ -85,6 +105,8 @@ function create_customer()
 	local neg=rnd(1)
 	cust.wants=rnd(1.0)-neg
 	waiting=cust
+	caninput=false
+	accepted=false
 end
 
 function get_current_anger(l)
@@ -295,6 +317,7 @@ function end_battle()
 	inbattle=false
 	indialogue=false
 	player_turn = false
+	actor[1].curhealth=actor[1].maxhealth
 end
 
 function player_fainted()
@@ -382,7 +405,7 @@ end
 function manage_talker(a)
 	if not caninput then return end
 	local dist=distance(a.x, a.y,actor[1].x, actor[1].y)
-	if(dist>0 and dist <=16 and btnp(4)) then
+	if(dist>0 and dist <=32 and btnp(4)) then
 		start_dialogue(a.diag, a, start_battle)
 	end
 end
@@ -532,7 +555,31 @@ function _update()
 	if(inbattle) then
 		battle_mode()
 	end
-	if(accepted==false and waiting!=nil and moveto(waiting, 39*8, 54*8) and indialogue==false) then start_dialogue({"i want an angry dad"},nil, function() accepted=true end) end
+	--dad_desc={
+		--"ecstatic",
+		--"happy",
+		--"complacent",
+		--"disappointed",
+		--"angry"
+	--}
+	if(waiting!={} and distance(actor[1].x, actor[1].y, waiting.x, waiting.y)<64 and currdad!=-2.0 and btnp(4)) then
+		turn_in()
+	end
+	if(accepted==false and waiting!=nil and moveto(waiting, 39*8, 54*8) and indialogue==false) then
+		local tips={
+			"you can find dads in the\ntall grass",
+			"complacent dads are\nthe hardest to catch",
+			"if you faint, you'll come\nback to the store"
+		}
+		local tip=pick_random_response(tips)
+		if(get_current_anger(waiting.wants) == dad_desc[5]) start_dialogue({"i want an angry dad",tip},nil, function() accepted=true end)
+		if(get_current_anger(waiting.wants) == dad_desc[4]) start_dialogue({"i want a disappointed dad",tip},nil, function() accepted=true end)
+		if(get_current_anger(waiting.wants) == dad_desc[3]) start_dialogue({"i want a complacent dad",tip},nil, function() accepted=true end)
+		if(get_current_anger(waiting.wants) == dad_desc[2]) start_dialogue({"i want a happy dad",tip},nil, function() accepted=true end)
+		if(get_current_anger(waiting.wants) == dad_desc[1]) start_dialogue({"i want an ecstatic dad",tip},nil, function() accepted=true end)
+	end
+
+	if(leaving and moveto(walkingout, 42*8,64*8)) then del(actor,walkingout) end
 end
 
 function _draw()
@@ -542,13 +589,16 @@ function _draw()
 		foreach(actor,draw_actor)
 		camera(actor[2].x,actor[2].y)
 		if(indialogue) draw_dialogue_box(actor[2].x,actor[2].y+88,15,2)
-		if(currdad!=-2)	then spr(58, actor[2].x+8, actor[2].y+16,1,1) print(get_current_anger(currdad), actor[2].x+24, actor[2].y+16, 7) end
+		if(currdad!=-2)	then
+			spr(58, actor[2].x+8, actor[2].y+8,1,1)
+		end
+		if(accepted) then
+			print(get_current_anger(waiting.wants), actor[2].x+24, actor[2].y+8, 7)
+		end
 	else
 		draw_battle()
 	end
 	if(debug)debug_function()
-	local test ="noo"
-	print("test %1 yessss"..test, actor[2].x, actor[2].y)
 end
 
 function _init()
