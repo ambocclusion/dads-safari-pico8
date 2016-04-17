@@ -35,9 +35,21 @@ function setup_actors()
 	enemy.maxcapchance=.65
 	enemy.throwmod=.2
 	enemy.angerlevel=0
-	enemy.runchance=.1
+	enemy.runchance=.05
 	enemy.evasion=.15
 	enemy.diag={"i'm here to capture you!", "hi here to capture you,\ni'm dad"}
+end
+
+function restart_game()
+
+end
+
+function get_current_anger(l)
+	if(l<-.66)	return dad_desc[5]
+	if(l<-.33 and l>-.66)	return dad_desc[4]
+	if(l>-.33 and l <.33)	return dad_desc[3]
+	if(l>.33 and l <.66)	return dad_desc[2]
+	if(l>.66)	return dad_desc[1]
 end
 
 --"battle" system
@@ -52,6 +64,7 @@ battle_desc={
 	"run away\nfrom dad"
 }
 player_turn=false
+frame_started=false
 
 function start_battle(a)
 
@@ -82,11 +95,11 @@ function start_anims(a1,a2)
 end
 
 function perform_attack(attack)
+	player_turn=false
 	if(attack == 1)	throw_rock()
 	if(attack == 2)	throw_food()
 	if(attack == 3)	attempt_capture()
 	if(attack == 4)	run_away()
-	player_turn=false
 end
 
 function throw_rock()
@@ -101,8 +114,10 @@ function throw_rock()
 	}
 	local random=rnd(100)/100
 	if(random>=battlesprites[2].evasion) then
+		battlesprites[2].curhealth-=1
 		battlesprites[2].capturechance+=battlesprites[2].throwmod
-		battlesprites[2].angerlevel+=.2
+		battlesprites[2].angerlevel-=.2
+		battlesprites[2].runchance+=.05
 		start_dialogue({"rock thrown successfully!", pick_random_response(succ_resp)},nil,dad_turn)
 	else
 		start_dialogue({"the rock missed...", pick_random_response(fail_resp)},nil,dad_turn)
@@ -118,8 +133,10 @@ function throw_food()
 	}
 	local random=rnd(100)/100
 	if(random>=battlesprites[2].evasion) then
+		if(battlesprites[2].curhealth < battlesprites[2].maxhealth)	battlesprites[2].curhealth+=1
 		battlesprites[2].capturechance+=battlesprites[2].throwmod
-		battlesprites[2].angerlevel-=.2
+		battlesprites[2].angerlevel+=.2
+		battlesprites[2].runchance+=.05
 		start_dialogue({"food thrown successfully!", pick_random_response(succ_resp)},nil,dad_turn)
 	else
 		start_dialogue({"dad didn't like that...",pick_random_response(fail_resp)},nil,dad_turn)
@@ -127,22 +144,65 @@ function throw_food()
 end
 
 function attempt_capture()
+	local fail_resp={
+		"dad burst out!"
+	}
 	local random=rnd(100)/100
 	if(random<=battlesprites[2].capturechance) then
 		capture_dad()
+	else
+		start_dialogue({pick_random_response(fail_resp)},nil,dad_turn)
 	end
 end
 
-function run_away()
+-- dad actions
+
+function attack_player()
+	battlesprites[1].curhealth-=1
+	start_dialogue({"dad attacks player!"}, nil,end_dad_turn)
 end
 
-function capture_dad()
-	currdad=battlesprites[2].angerlevel
+function dad_do_nothing()
+	local dad_actions={
+		"dad does nothing!"
+	}
+	start_dialogue({pick_random_response(dad_actions)},nil, end_dad_turn)
+end
+
+function run_away()
+	local dad_resp={	
+		"dad got away!"
+	}
+	battlesprites[2].curhealth=0
+	start_dialogue({pick_random_response(dad_resp)},nil, end_battle)
 end
 
 function dad_turn()
+	if(battlesprites[2].curhealth<=0) then faint_dad() return end
 	local random=rnd(100)/100
+	if(random<=battlesprites[2].runchance) then run_away() return end
+	if(random<=.5)	then attack_player() return end
+	if(random>=.5) then dad_do_nothing() return end
+end
 
+function end_dad_turn()
+	if(battlesprites[1].curhealth<=0) then start_dialogue({"player fainted!"}, nil, player_fainted) return end
+	frame_started=true
+	player_turn=true
+	start_dialogue(battle_desc)
+end
+
+function faint_dad()
+	start_dialogue({"dad fainted!"},nil,end_battle)
+end
+
+function capture_dad()
+	local succ_resp={
+		"dad stopped moving"
+	}
+	currdad=battlesprites[2].angerlevel
+	battlesprites[2].curhealth=0
+	start_dialogue({pick_random_response(succ_resp), "you've captured dad!"},nil, end_battle)
 end
 
 function battle_mode()
@@ -151,11 +211,12 @@ function battle_mode()
 		start_anims(battlesprites[1],battlesprites[2])
 		return
 	end
-	if(player_turn) then
+	if(player_turn and frame_started==false) then
 		if(btnp(4))	then sfx(3) perform_attack(battle_selection) end
 		if(btnp(2) and battle_selection > 1) then sfx(2) battle_selection-= 1 cdi=battle_selection call_dialogue() end
 		if(btnp(3) and battle_selection < count(battle_desc)) then sfx(2) battle_selection+= 1 cdi=battle_selection call_dialogue() end
 	end
+	frame_started=false
 end
 
 function draw_battle_screen()
@@ -176,12 +237,26 @@ function draw_battle()
 	else
 		rectfill(0,0,128,128, 7)
 	end
-	zspr(battlesprites[1].sp,battlesprites[1].spw,battlesprites[1].sph,battlesprites[1].bsx,battlesprites[1].bsy,4,true)
 	zspr(battlesprites[2].sp,battlesprites[2].spw,battlesprites[2].sph,battlesprites[2].bsx,battlesprites[2].bsy,3,false)
+	zspr(battlesprites[1].sp,battlesprites[1].spw,battlesprites[1].sph,battlesprites[1].bsx,battlesprites[1].bsy,4,true)
 	if(indialogue and not player_turn) draw_dialogue_box(0,88,15,2)
-	if(battle_starting==false and player_turn)then
-		draw_battle_screen()
+	if(battle_starting==false)then
+		if (player_turn) draw_battle_screen()
+		print("hp: "..battlesprites[1].curhealth, battlesprites[1].bsx+48, battlesprites[1].bsy+32, 5)
+		print("hp: "..battlesprites[2].curhealth, battlesprites[2].bsx-48, battlesprites[2].bsy, 5)
+		print(get_current_anger(battlesprites[2].angerlevel), battlesprites[2].bsx-48, battlesprites[2].bsy+16, 5)
 	end
+end
+
+function end_battle()
+	inbattle=false
+	indialogue=false
+	player_turn = false
+end
+
+function player_fainted()
+	end_battle()
+	restart_game()
 end
 
 --start dialogue system
@@ -301,7 +376,7 @@ function create_actor(x,y,sizex,sizey)
 	a.vely=0
 	a.speed=1
 	a.maxspeed=1
-	a.maxhealth=3
+	a.maxhealth=6
 	a.curhealth=a.maxhealth
 	a.type={"actor"}
 	a.ignoretypes={}
@@ -676,7 +751,7 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __gff__
-0000000200000202020200000000000000000000000002020202000000000000000000000000000002020000000000000000000002020202020200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000200000202020200000000000000000000000002020202000000000000000000000000000002020000000000000000000402020202020200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 0000000000000000000000000000000000000000000000000000000000000000292929292929292929292929292929292929292929292929292929292929292900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
