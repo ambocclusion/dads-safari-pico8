@@ -93,8 +93,8 @@ function turn_in()
 		"i'm never coming back!"
 	}
 	--if(waiting!={}) then
-	if(get_current_anger(waiting.wants) == get_current_anger(currdad)) then start_dialogue({pick_random_response(right_responses)},nil,function() walkingout=waiting currdad=-2.0 create_customer() leaving=true end)
-	else	start_dialogue({pick_random_response(wrong_responses)},nil,function() walkingout=waiting currdad=-2.0 create_customer() leaving=true end)
+	if(get_current_anger(waiting.wants) == get_current_anger(currdad)) then start_dialogue({"just what i was looking for!"},nil,function() walkingout=waiting currdad=-2.0 create_customer() leaving=true end)
+	else	start_dialogue({"not exactly what i wanted..."},nil,function() walkingout=waiting currdad=-2.0 create_customer() leaving=true end)
 		--end
 		
 	end
@@ -309,7 +309,9 @@ function draw_battle()
 		if (player_turn) draw_battle_screen()
 		print("hp: "..battlesprites[1].curhealth, battlesprites[1].bsx+48, battlesprites[1].bsy+32, 5)
 		print("hp: "..battlesprites[2].curhealth, battlesprites[2].bsx-48, battlesprites[2].bsy, 5)
-		print(get_current_anger(battlesprites[2].angerlevel), battlesprites[2].bsx-48, battlesprites[2].bsy+16, 5)
+		local color=5
+		if(get_current_anger(battlesprites[2].angerlevel)==get_current_anger(waiting.wants))	color=3
+		print(get_current_anger(battlesprites[2].angerlevel), battlesprites[2].bsx-48, battlesprites[2].bsy+16, color)
 	end
 end
 
@@ -588,16 +590,22 @@ function _draw()
 		map(0,0,0,0,128,128)
 		foreach(actor,draw_actor)
 		camera(actor[2].x,actor[2].y)
-		if(indialogue) draw_dialogue_box(actor[2].x,actor[2].y+88,15,2)
-		if(currdad!=-2)	then
-			spr(58, actor[2].x+8, actor[2].y+8,1,1)
-		end
 		if(accepted) then
-			print(get_current_anger(waiting.wants), actor[2].x+24, actor[2].y+8, 7)
+			rectfill(actor[2].x,actor[2].y+116,actor[2].x+64,actor[2].y+128,1)
+			local color=7
+			if(currdad!=-2) then
+				if(get_current_anger(currdad)==get_current_anger(waiting.wants)) color=12
+				if(get_current_anger(currdad)!=get_current_anger(waiting.wants)) color=8
+			end
+			print(get_current_anger(waiting.wants), actor[2].x+24, actor[2].y+120, color)
+		end
+		if(currdad!=-2)	then
+			spr(58, actor[2].x+12, actor[2].y+120,1,1)
 		end
 	else
 		draw_battle()
 	end
+	if(indialogue) draw_dialogue_box(actor[2].x,actor[2].y+88,15,2)
 	if(debug)debug_function()
 end
 
