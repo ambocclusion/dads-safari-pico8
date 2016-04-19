@@ -146,6 +146,7 @@ function get_current_anger(l)
 end
 
 menu_open=false
+menu_state="main"
 menu_select=1
 function draw_menu()
 	draw_tip()
@@ -172,6 +173,12 @@ function game_loop()
 		battle_mode()
 	end
 	manage_customer()
+end
+
+function menu_update()
+	if(btnp(5))	then	menu_open=false return end
+	if(menu_state=="main") then
+	end
 end
 
 --"battle" system
@@ -207,15 +214,7 @@ function start_battle(a)
 
 end
 
-function start_anims(a1,a2)
-	local dest1=12
-	local dest2=84
-	a1.bsx=movetowards(a1.bsx, dest1, 1.5)
-	a2.bsx=movetowards(a2.bsx, dest2, 1.5)
-
-	if(a1.bsx==dest1 and a2.bsx==dest2) then battle_starting=false indialogue=false player_turn=true start_dialogue(battle_desc) end
-end
-
+-- battle loop
 function perform_attack(attack)
 	player_turn=false
 	if(attack == 1)	throw_rock()
@@ -341,6 +340,50 @@ function battle_mode()
 	frame_started=false
 end
 
+function end_battle()
+	inbattle=false
+	indialogue=false
+	player_turn = false
+	actor[1].curhealth=actor[1].maxhealth
+	needs_redadding=true
+end
+
+function player_fainted()
+	end_battle()
+	restart_game()
+end
+
+-- attack animations
+
+function item_throw(a,target,cb)
+end
+
+function anim_attack(a,cb)
+end
+
+function anim_gets_attacked(a, cb)
+end
+
+function anim_gets_food(a, cb)
+end
+
+function anim_gets_captured(a,cb)
+end
+
+function anim_faints(a, cb)
+end
+
+-- battle drawing functions
+
+function start_anims(a1,a2)
+	local dest1=12
+	local dest2=84
+	a1.bsx=movetowards(a1.bsx, dest1, 1.5)
+	a2.bsx=movetowards(a2.bsx, dest2, 1.5)
+
+	if(a1.bsx==dest1 and a2.bsx==dest2) then battle_starting=false indialogue=false player_turn=true start_dialogue(battle_desc) end
+end
+
 function draw_battle_screen()
 	draw_box_bg(0,88,5,2)
 	local startpos=94
@@ -370,19 +413,6 @@ function draw_battle()
 		if(get_current_anger(battlesprites[2].angerlevel)==get_current_anger(waiting.wants))	color=3
 		print(get_current_anger(battlesprites[2].angerlevel), battlesprites[2].bsx-48, battlesprites[2].bsy+16, color)
 	end
-end
-
-function end_battle()
-	inbattle=false
-	indialogue=false
-	player_turn = false
-	actor[1].curhealth=actor[1].maxhealth
-	needs_redadding=true
-end
-
-function player_fainted()
-	end_battle()
-	restart_game()
 end
 
 --start dialogue system
@@ -610,6 +640,10 @@ function control_player()
 end
 
 function _update()
+	if(inbattle==false) then
+		if(btnp(5) and menu_open==false)	then	menu_open=true sfx(4) return end
+	end
+	if(menu_open)	menu_update()	return
 	foreach(actor,manage_actor)
 	game_loop()
 end
@@ -941,7 +975,7 @@ __sfx__
 010300001f41028100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010018100
 0104000036020370300d0000e0000f00010000110001200013000140001500016000170001c0001c0001e0000f0000f0000f000140001c0001c000230001f000330001f000360000c0002e000140001000000000
 011000002377011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0002000028570295702a5702c5702e5703057031570325703d5003e5003e5003f500115000a500325003250032500315003150031500315003150031500315003150000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
